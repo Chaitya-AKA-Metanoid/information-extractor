@@ -7,7 +7,7 @@ import re
 from nltk.tokenize import sent_tokenize
 from io import BytesIO
 
-# --- 1. SETUP & CONFIGURATION ---
+
 st.set_page_config(page_title="AI Document Extractor", page_icon="📄", layout="wide")
 
 @st.cache_resource
@@ -26,7 +26,7 @@ def load_models():
         nltk.download('punkt_tab')
         
     # SpaCy Setup
-    # We assume the model is installed via requirements.txt
+    # assuming the model is installed via requirements.txt
     if not spacy.util.is_package("en_core_web_sm"):
         st.error("Spacy model not found. Please ensure it is in requirements.txt")
         st.stop()
@@ -35,7 +35,7 @@ def load_models():
 
 nlp = load_models()
 
-# --- 2. UTILITY FUNCTIONS ---
+# 2.UTILITY FUNCTIONS
 
 def extract_text_from_uploaded_file(uploaded_file):
     try:
@@ -64,7 +64,7 @@ def get_entity(text, label):
     ents = [ent.text for ent in doc.ents if ent.label_ == label]
     return ents[0] if ents else None
 
-# Global variables
+
 FINAL_DATA_ROWS = []
 ROW_COUNTER = 1
 
@@ -78,12 +78,11 @@ def add_data_row(key, value, comment=""):
     })
     ROW_COUNTER += 1
 
-# --- 3. CORE EXTRACTION LOGIC ---
-
-def perform_general_extraction(sentences):
+# 3. CORE EXTRACTION LOGIC
+    def perform_general_extraction(sentences):
     full_text = " ".join(sentences)
     
-    # --- PERSONAL INFO ---
+    
     intro_sent = find_sentence(sentences, ["born"]) or sentences[0]
     doc = nlp(intro_sent)
     person_ents = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
@@ -124,7 +123,7 @@ def perform_general_extraction(sentences):
         nationality = nat_match.group(1) if nat_match else "Unknown"
         add_data_row("Nationality", nationality, "Citizenship status is important for understanding his work authorization and visa requirements.")
 
-    # --- PROFESSIONAL ---
+    # PROFESSIONAL 
     first_role_sent = find_sentence(sentences, ["began"]) or find_sentence(sentences, ["first company"])
     if first_role_sent:
         add_data_row("Joining Date of first professional role", "2012-07-01") 
@@ -163,7 +162,7 @@ def perform_general_extraction(sentences):
         if prev_role_match:
             add_data_row("Previous Starting Designation", prev_role_match.group(1).strip(), "Promoted in 2019")
 
-    # --- ACADEMIC ---
+    #ACADEMIC
     hs_sent = find_sentence(sentences, ["high school"])
     if hs_sent:
         school_match = re.search(r'education at (.*?),', hs_sent)
@@ -197,7 +196,7 @@ def perform_general_extraction(sentences):
         grad_context = find_sentence(sentences, ["thesis", "scoring"]) or ""
         add_data_row("Graduation CGPA", cgpa_match.group(1).strip() if cgpa_match else "", grad_context)
 
-    # --- CERTIFICATIONS ---
+    # CERTIFICATIONS
     cert_keywords = ["certification", "exam", "score", "passed"]
     potential_cert_sentences = [s for s in sentences if any(k in s.lower() for k in cert_keywords)]
     cert_counter = 1
@@ -212,12 +211,13 @@ def perform_general_extraction(sentences):
             seen_certs.add(ent)
             cert_counter += 1
 
-    # --- TECHNICAL SKILLS ---
-    if "technical proficiency" in full_text.lower():
+    # TECHNICAL SKILLS
+    if
+    "technical proficiency" in full_text.lower():
         start = full_text.lower().find("in terms of technical proficiency")
         add_data_row("Technical Proficiency", "", full_text[start:].strip())
 
-# --- 4. STREAMLIT UI ---
+# STREAMLIT UI 
 
 st.title("🤖 AI-Powered Document Structuring")
 st.markdown("""
