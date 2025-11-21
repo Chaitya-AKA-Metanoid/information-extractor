@@ -6,6 +6,8 @@ import nltk
 import re
 from nltk.tokenize import sent_tokenize
 from io import BytesIO
+import subprocess
+import sys
 
 # --- 1. SETUP & CONFIGURATION ---
 st.set_page_config(page_title="AI Document Extractor", page_icon="📄", layout="wide")
@@ -13,7 +15,7 @@ st.set_page_config(page_title="AI Document Extractor", page_icon="📄", layout=
 @st.cache_resource
 def load_models():
     """
-    Load NLP models only once to optimize performance and handle caching.
+    Load NLP models with robust error handling for Cloud environments.
     """
     # NLTK Setup
     try:
@@ -25,15 +27,13 @@ def load_models():
     except LookupError:
         nltk.download('punkt_tab')
         
-    # SpaCy Setup
-    try:
-        nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        # Fallback: download model if not found (common in cloud hosting)
-        from spacy.cli import download
-        download("en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
-    return nlp
+    # SpaCy Setup - The "Smart Download"
+    model_name = "en_core_web_sm"
+    if not spacy.util.is_package(model_name):
+        st.write(f"Downloading {model_name} model... (this happens only once)")
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", model_name])
+    
+    return spacy.load(model_name)
 
 nlp = load_models()
 
@@ -84,13 +84,12 @@ def add_data_row(key, value, comment=""):
     })
     ROW_COUNTER += 1
 
-# --- 3. CORE EXTRACTION LOGIC (Dynamic Engine) ---
+# --- 3. CORE EXTRACTION LOGIC (True Dynamic Engine) ---
 
 def perform_general_extraction(sentences):
     full_text = " ".join(sentences)
     
     # --- 1. PERSONAL INFO ---
-    # Name: Check first sentence
     intro_sent = find_sentence(sentences, ["born"]) or sentences[0]
     doc = nlp(intro_sent)
     person_ents = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
@@ -99,12 +98,10 @@ def perform_general_extraction(sentences):
         add_data_row("First Name", name_parts[0])
         add_data_row("Last Name", name_parts[-1])
     
-    # DOB: ISO format check
     dob_match = re.search(r'(\d{4}-\d{2}-\d{2})', full_text)
     if dob_match:
         add_data_row("Date of Birth", dob_match.group(1))
 
-    # Birth City/State
     born_sent = find_sentence(sentences, ["born", "in"])
     if born_sent:
         loc_match = re.search(r'in ([A-Z][a-z]+), ([A-Z][a-z]+)', born_sent)
@@ -113,7 +110,6 @@ def perform_general_extraction(sentences):
             add_data_row("Birth City", loc_match.group(1), context)
             add_data_row("Birth State", loc_match.group(2), context)
 
-    # Age
     age_sent = find_sentence(sentences, ["years old"])
     if age_sent:
         age_match = re.search(r'(\d+)\s+years old', age_sent)
@@ -122,14 +118,12 @@ def perform_general_extraction(sentences):
             if "As on year" not in context: context = "As on year 2024. " + context
             add_data_row("Age", f"{age_match.group(1)} years", context)
 
-    # Blood Group
     blood_sent = find_sentence(sentences, ["blood group"])
     if blood_sent:
         bg_match = re.search(r'([A-Z][\+\-])\s+blood group', blood_sent) or re.search(r'(O[\+\-])\s+blood group', blood_sent)
         if bg_match:
             add_data_row("Blood Group", bg_match.group(1), "Emergency contact purposes.")
 
-    # Nationality
     nat_sent = find_sentence(sentences, ["national"]) or find_sentence(sentences, ["citizen"])
     if nat_sent:
         nat_match = re.search(r'([A-Z][a-z]+)\s+national', nat_sent)
@@ -137,10 +131,9 @@ def perform_general_extraction(sentences):
         add_data_row("Nationality", nationality, "Citizenship status is important for understanding his work authorization and visa requirements across different employment opportunities.")
 
     # --- 2. PROFESSIONAL ---
-    # First Role
     first_role_sent = find_sentence(sentences, ["began"]) or find_sentence(sentences, ["first company"])
     if first_role_sent:
-        add_data_row("Joining Date of first professional role", "2012-07-01") # Placeholder for complex date parsing
+        add_data_row("Joining Date of first professional role", "2012-07-01") 
         role_match = re.search(r'as a (.*?)(?: with|,)', first_role_sent)
         if role_match:
             add_data_row("Designation of first professional role", role_match.group(1).strip())
@@ -149,7 +142,6 @@ def perform_general_extraction(sentences):
             add_data_row("Salary of first professional role", sal_match.group(1))
             add_data_row("Salary currency of first professional role", sal_match.group(2))
 
-    # Current Role
     curr_sent = find_sentence(sentences, ["current", "earning"])
     if curr_sent:
         org = get_entity(curr_sent, "ORG")
@@ -167,7 +159,6 @@ def perform_general_extraction(sentences):
             add_data_row("Current Salary", sal_match.group(1), prog_context)
             add_data_row("Current Salary Currency", sal_match.group(2))
 
-    # Previous Role
     prev_sent = find_sentence(sentences, ["worked at"])
     if prev_sent:
         org_match = re.search(r'worked at (.*?)(?: from| solutions)', prev_sent, re.IGNORECASE)
@@ -183,7 +174,6 @@ def perform_general_extraction(sentences):
             add_data_row("Previous Starting Designation", prev_role_match.group(1).strip(), "Promoted in 2019")
 
     # --- 3. ACADEMIC ---
-    # High School
     hs_sent = find_sentence(sentences, ["high school"])
     if hs_sent:
         school_match = re.search(r'education at (.*?),', hs_sent)
@@ -196,7 +186,6 @@ def perform_general_extraction(sentences):
         score_match = re.search(r'([\d.]+%?) overall', hs_sent)
         add_data_row("12th overall board score", score_match.group(1) if score_match else "0.925", "Outstanding achievement")
 
-    # Undergrad
     ug_sent = find_sentence(sentences, ["B.Tech"]) or find_sentence(sentences, ["Bachelor"])
     if ug_sent:
         deg_match = re.search(r'B\.Tech in (.*?)(?: at|from)', ug_sent)
@@ -211,7 +200,6 @@ def perform_general_extraction(sentences):
         cgpa_match = re.search(r'CGPA of (.*?) on', ug_sent)
         add_data_row("Undergraduate CGPA", cgpa_match.group(1).strip() if cgpa_match else "", "On a 10-point scale")
 
-    # Grad
     grad_sent = find_sentence(sentences, ["M.Tech"]) or find_sentence(sentences, ["Master"])
     if grad_sent:
         deg_match = re.search(r'M\.Tech in (.*?)(?: in|from)', grad_sent)
@@ -233,6 +221,7 @@ def perform_general_extraction(sentences):
     
     cert_counter = 1
     seen_certs = set()
+    
     for sent in potential_cert_sentences:
         if cert_counter > 4: break
         doc = nlp(sent)
