@@ -212,8 +212,7 @@ def perform_general_extraction(sentences):
             cert_counter += 1
 
     # TECHNICAL SKILLS
-    if
-    "technical proficiency" in full_text.lower():
+    if "technical proficiency" in full_text.lower():
         start = full_text.lower().find("in terms of technical proficiency")
         add_data_row("Technical Proficiency", "", full_text[start:].strip())
 
