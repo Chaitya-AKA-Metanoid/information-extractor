@@ -79,7 +79,7 @@ def add_data_row(key, value, comment=""):
     ROW_COUNTER += 1
 
 # 3. CORE EXTRACTION LOGIC
-    def perform_general_extraction(sentences):
+def perform_general_extraction(sentences):
     full_text = " ".join(sentences)
     
     
