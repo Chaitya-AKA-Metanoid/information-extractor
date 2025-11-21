@@ -1,5 +1,3 @@
-# information-extractor
-
 # AI-Powered Document Structuring & Data Extraction
 
 ## Overview
