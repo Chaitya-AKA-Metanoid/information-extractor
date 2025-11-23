@@ -4,3 +4,4 @@ pypdf
 openpyxl
 transformers
 torch
+nltk
